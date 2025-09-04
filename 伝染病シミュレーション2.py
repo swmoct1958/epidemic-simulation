@@ -1,6 +1,17 @@
 import random
 import argparse
 import csv
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# 日本語フォントの設定
+# ご自身の環境に合わせてパスを修正してください
+# Windowsの場合
+font_path = 'C:\\Windows\\Fonts\\msgothic.ttc'
+# Macの場合
+# font_path = '/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc'
+fp = fm.FontProperties(fname=font_path)
+plt.rcParams['font.family'] = fp.get_family()
 
 class Agent:
     SUSCEPTIBLE = 0
@@ -34,7 +45,7 @@ def run_simulation(N, G, α_intra, α_inter, ψ, steps, seed=None, output_file=N
         S = sum(1 for a in agents if a.state == Agent.SUSCEPTIBLE)
         I = sum(1 for a in agents if a.state == Agent.INFECTED)
         R = sum(1 for a in agents if a.state == Agent.RECOVERED)
-        history.append([t, S, I, R])
+        history.append({'Step': t, 'S': S, 'I': I, 'R': R})
 
         for agent in agents:
             if agent.state == Agent.SUSCEPTIBLE:
@@ -44,35 +55,57 @@ def run_simulation(N, G, α_intra, α_inter, ψ, steps, seed=None, output_file=N
 
     if output_file:
         with open(output_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['Step', 'Susceptible', 'Infected', 'Recovered'])
+            writer = csv.DictWriter(f, fieldnames=['Step', 'S', 'I', 'R'])
+            writer.writeheader()
             writer.writerows(history)
 
     return history
 
+def plot_history(history):
+    steps = [h['Step'] for h in history]
+    susceptible = [h['S'] for h in history]
+    infected = [h['I'] for h in history]
+    recovered = [h['R'] for h in history]
+
+    plt.plot(steps, susceptible, label='感受性者')
+    plt.plot(steps, infected, label='感染者')
+    plt.plot(steps, recovered, label='回復者')
+    plt.xlabel('ステップ')
+    plt.ylabel('人口')
+    plt.title('感染症シミュレーション')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
 def main():
+    plt.rcParams['font.family'] = 'Yu Gothic'
     parser = argparse.ArgumentParser(description='伝染病シミュレーション（グループ感染対応）')
     parser.add_argument('--N', type=int, default=1000, help='総エージェント数')
     parser.add_argument('--G', type=int, default=10, help='グループ数')
     parser.add_argument('--steps', type=int, default=100, help='シミュレーションステップ数')
-    parser.add_argument('--α_intra', type=float, default=0.05, help='同一グループ内の感染率')
-    parser.add_argument('--α_inter', type=float, default=0.005, help='異なるグループ間の感染率')
-    parser.add_argument('--ψ', type=float, default=0.01, help='回復率')
+    parser.add_argument('--alpha_intra', type=float, default=0.05, help='同一グループ内の感染率')
+    parser.add_argument('--alpha_inter', type=float, default=0.005, help='異なるグループ間の感染率')
+    parser.add_argument('--psi', type=float, default=0.01, help='回復率')
     parser.add_argument('--seed', type=int, default=None, help='乱数シード（任意）')
     parser.add_argument('--output', type=str, default='simulation_output.csv', help='CSV出力ファイル名')
+    parser.add_argument('--plot', action='store_true', help='感染者数の推移をグラフ表示する')
 
     args = parser.parse_args()
 
-    run_simulation(
+    history = run_simulation(
         N=args.N,
         G=args.G,
-        α_intra=args.α_intra,
-        α_inter=args.α_inter,
-        ψ=args.ψ,
+        α_intra=args.alpha_intra,
+        α_inter=args.alpha_inter,
+        ψ=args.psi,
         steps=args.steps,
         seed=args.seed,
         output_file=args.output
     )
+
+    if args.plot:
+        plot_history(history)
 
 if __name__ == '__main__':
     main()
